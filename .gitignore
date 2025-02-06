@@ -1,9 +1,9 @@
 .venv
-quijote/unzip_all.sh
 
 quijote/Snapshots
-quijote/FoF/**/*.0
 
+# Datos
+quijote/FoF/**/*.0
 quijote/grafos/**/*.npz
 quijote/grafos/**/*.xml
 quijote/grafos/**/*.graphml

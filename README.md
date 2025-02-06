@@ -44,4 +44,6 @@ Dentro de [quijote/FoF](./quijote/FoF/) se deben descargar los archivos que se e
 
 Dentro de [quijote/grafos](./quijote/grafos/) se deben descagar los archivos que están en: [https://drive.google.com/drive/folders/1D7uN7TyFe49s_MKvWldYkgKs7powOzRv?usp=sharing](https://drive.google.com/drive/folders/1D7uN7TyFe49s_MKvWldYkgKs7powOzRv?usp=sharing).
 
+Cuando se descargan los datos directamente Drive es posible que se generen varios archivos zip que contienen toda la información, por tanto, el script que se encuentra [aquí](./quijote/unzip_all.sh), puede llegar a ser útil para extraer toda la información dentro de los archivos comprimidos. La manera de usar este script ya está en cada quién, se podría mover el archivo de carpetas o cómo el usuario vea conveniente. 
+
 Además, no pasar por alto que se deben remover los archivos `.gitkeep`, porque son únicamente para mostrar carpetas vacías en Github.
