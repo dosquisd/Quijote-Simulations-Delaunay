@@ -35,3 +35,13 @@ Instalar requerimientos
 ``` bash
 $pip install -r requirements.txt
 ```
+
+## Datos
+
+Desafortunadamente, en este momento no contamos con Git LFS para poder subir los datos al repositorio de Github, sin embargo, son perfectamente descargables en los siguientes enlaces.
+
+Dentro de [quijote/FoF](./quijote/FoF/) se deben descargar los archivos que se encuentran en el siguiente enlace: [https://drive.google.com/drive/folders/1kVdYs3JcDT0_CrdNbxiJchOqfAYyJx-S?usp=sharing](https://drive.google.com/drive/folders/1kVdYs3JcDT0_CrdNbxiJchOqfAYyJx-S?usp=sharing).
+
+Dentro de [quijote/grafos](./quijote/grafos/) se deben descagar los archivos que están en: [https://drive.google.com/drive/folders/1D7uN7TyFe49s_MKvWldYkgKs7powOzRv?usp=sharing](https://drive.google.com/drive/folders/1D7uN7TyFe49s_MKvWldYkgKs7powOzRv?usp=sharing).
+
+Además, no pasar por alto que se deben remover los archivos `.gitkeep`, porque son únicamente para mostrar carpetas vacías en Github.

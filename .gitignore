@@ -1,5 +1,13 @@
 .venv
 quijote/unzip_all.sh
+
 quijote/Snapshots
-quijote/FoF
-quijote/grafos/metrics-pre.json
+quijote/FoF/**/*.0
+
+quijote/grafos/**/*.npz
+quijote/grafos/**/*.xml
+quijote/grafos/**/*.graphml
+quijote/grafos/*.json
+
+# No tengo git LFS, pero si lo tuviera, esto sería útil
+.gitattributes
