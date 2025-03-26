@@ -44,6 +44,40 @@ Dentro de [quijote/FoF](./quijote/FoF/) se deben descargar los archivos que se e
 
 Dentro de [quijote/grafos](./quijote/grafos/) se deben descagar los archivos que están en: [https://drive.google.com/drive/folders/1D7uN7TyFe49s_MKvWldYkgKs7powOzRv?usp=sharing](https://drive.google.com/drive/folders/1D7uN7TyFe49s_MKvWldYkgKs7powOzRv?usp=sharing).
 
-Cuando se descargan los datos directamente Drive es posible que se generen varios archivos zip que contienen toda la información, por tanto, el script que se encuentra [aquí](./quijote/unzip_all.sh), puede llegar a ser útil para extraer toda la información dentro de los archivos comprimidos. La manera de usar este script ya está en cada quién, se podría mover el archivo de carpetas o cómo el usuario vea conveniente. 
+Cuando se descargan los datos directamente Drive es posible que se generen varios archivos zip que contienen toda la información, por tanto, el script que se encuentra [aquí](./quijote/unzip_all.sh), puede llegar a ser útil para extraer toda la información dentro de los archivos comprimidos. La manera de usar este script ya está en cada quién, se podría mover el archivo de carpetas o cómo el usuario vea conveniente.
 
 Además, no pasar por alto que se deben remover los archivos `.gitkeep`, porque son únicamente para mostrar carpetas vacías en Github.
+
+## Multicore
+
+Existe un archivo llamado [calc_metrics_multicore.py](./calc_metrics_multicore.py) en el que calcula las métricas de los grafos utilizando paralelismo. A continuación, dejaré un comando que puede llegar a ese útil para utilizarlo:
+
+``` bash
+python3 calc_metrics_multicore.py --simus DC_p,DC_m,randoms --snapnum 000 --workers 4 --output ./quijote/grafos/metrics_000.json > output_000_1.log 2>&1 &
+```
+
+Los valores de cada uno de los parámetros son de ejemplos, pero la idea principal es la de utilizar un archivo extra para el historial de la salida en consola. Con `>` se estaría sobreescribiendo todo el rato el archivo `output_000_1.log`, redirigiendo al mismo lugar el "Standard Error" y el "Standard Output". Como mencioné antes, no es obligatorio, es solo una opción que escribo: se puede combinar con `tee` para ver la salida en consola también si así se quiere, o evitar que el script no se ejecute en segundo plano quitando el signo `&` al final. Son sugerencias
+
+De igual forma, aquí muestro la información de cada parámetro:
+
+``` bash
+$python3 calc_metrics_multicore.py --help
+
+usage: calc_metrics_multicore.py [-h] [--simus SIMUS] [--snapnum {000,001,002,003,004}] [--workers WORKERS] [--output OUTPUT]
+
+Calcular métricas de grafos Delaunay
+
+options:
+  -h, --help            show this help message and exit
+  --simus SIMUS         Simulación(es) a procesar. Si no se especifica, se procesan todas. Para escoger más de una simulación se debe separar
+                        por comas: "simu1,simu2" (default: ""). Simulaciones disponibles: Mnu_pp DC_p Mnu_p DC_m w_m s8_p s8_m w_p
+                        fiducial_LR Mnu_ppp randoms fiducial h_m fiducial_HR fiducial_ZA
+  --snapnum {000,001,002,003,004}
+                        Número de snapshot a procesar (default: 000)
+  --workers WORKERS     Número de procesos paralelos (default: 4)
+  --output OUTPUT       Ruta para guardar el archivo JSON de métricas (default: ./quijote/grafos/metrics.json)
+```
+
+El script automáticamente lista las simulaciones que estén descargadas en el equipo.
+
+<!-- Si alguien llegara a leer esto, la verdad es que no hemos podido lograr que funcione correctamente, hemos utilizado máquinas virtuales de Azure y Google Colab, pero aún no damos, ojalá ya quede cada vez menos! -->

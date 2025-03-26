@@ -286,10 +286,10 @@ def main(path_simu: Path, metrics: dict, snapnum: Snapnums = "000") -> dict:
 
 
 if __name__ == "__main__":
-    metrics_path: str = f'{graphs_root}/metrics_000.json'
+    metrics_path: str = f'{graphs_root}/metrics.json'
     SIMUS_CHOICES: list[str] = [simu for simu in os.listdir(graphs_root) 
                                 if os.path.isdir(os.path.join(graphs_root, simu))]
-    epilog_text = "Simulaciones disponibles:\n" + "\n".join(f"{simu} - " for simu in SIMUS_CHOICES)
+    epilog_text = "Simulaciones disponibles: " + "".join(f"{simu} " for simu in SIMUS_CHOICES)
 
     # Configurar el parser de argumentos
     parser = argparse.ArgumentParser(description='Calcular métricas de grafos Delaunay')
@@ -320,11 +320,11 @@ if __name__ == "__main__":
         default=metrics_path,
         help=f'Ruta para guardar el archivo JSON de métricas (default: {metrics_path})'
     )
-    
+
     # Parsear los argumentos
     args = parser.parse_args()
 
-    simus: list[str] = parse_simus(args.simus or "")
+    simus: list[str] = parse_simus(args.simus)
     SNAPNUM: Snapnums = args.snapnum
     workers: int = args.workers
     metrics_path: str = args.output
@@ -338,8 +338,10 @@ if __name__ == "__main__":
     if simus:
         parent_name = lambda path: path.parent.name if is_random_simu(path) else path.parents[1].name
         simus_path_snapnum = list(filter(lambda path: parent_name(path) in simus, simus_path_snapnum))
-
-    print(f"Simulaciones a procesar: {simus_path_snapnum}\n\n")
+        metrics_path = os.path.splitext(metrics_path)[0] + f"_{args.simus}.json"
+    
+    print(f"Ruta donde se guardaran las simulaciones: {metrics_path}\n")
+    print(f"Simulaciones a procesar: {[simu.name for simu in simus_path_snapnum]}\n\n")
 
     if os.path.exists(metrics_path):
         with open(metrics_path, 'r') as json_data:
