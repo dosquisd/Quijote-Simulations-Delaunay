@@ -217,6 +217,40 @@ def is_random_simu(simu_path: Path) -> bool:
     return not simu_path.parent.name.isdigit()
 
 
+def parse_simus(value: str) -> list[str]:
+    """
+    Parses a comma-separated string of simulation names, validates them against
+    a predefined list of valid choices, and returns a list of valid simulation names.
+    Args:
+        value (str): A comma-separated string of simulation names.
+    Returns:
+        list[str]: A list of valid simulation names.
+    Raises:
+        argparse.ArgumentTypeError: If any of the provided simulation names are invalid.
+    Notes:
+        - An empty string will result in an empty list being returned.
+        - The global variable `SIMUS_CHOICES` must be defined and contain the valid
+          simulation names.
+    """
+    global SIMUS_CHOICES
+
+    if value == "":
+        return []
+    
+    # Separar las comas y quitar espacios en blanco
+    selected_simus = list(map(lambda s: s.strip(), value.split(',')))
+    
+    # Verificar que todas las simulaciones sean correctas
+    invalid_simus = [s for s in selected_simus if s not in SIMUS_CHOICES]
+    if invalid_simus:
+        raise argparse.ArgumentTypeError(
+            f"Invalid simulation(s): {', '.join(invalid_simus)}. "
+            f"Valid choices are: {', '.join(SIMUS_CHOICES)}"
+        )
+    
+    return selected_simus
+
+
 def main(path_simu: Path, metrics: dict, snapnum: Snapnums = "000") -> dict:
     try:
         if is_random_simu(path_simu):
@@ -253,9 +287,20 @@ def main(path_simu: Path, metrics: dict, snapnum: Snapnums = "000") -> dict:
 
 if __name__ == "__main__":
     metrics_path: str = f'{graphs_root}/metrics_000.json'
+    SIMUS_CHOICES: list[str] = [simu for simu in os.listdir(graphs_root) 
+                                if os.path.isdir(os.path.join(graphs_root, simu))]
+    epilog_text = "Simulaciones disponibles:\n" + "\n".join(f"{simu} - " for simu in SIMUS_CHOICES)
 
     # Configurar el parser de argumentos
     parser = argparse.ArgumentParser(description='Calcular métricas de grafos Delaunay')
+    parser.add_argument(
+        '--simus',
+        type=str,
+        default="",
+        help=('Simulación(es) a procesar. Si no se especifica, se procesan todas. ' +
+            'Para escoger más de una simulación se debe separar por comas: "simu1,simu2" (default: ""). ' +
+            epilog_text)
+    )
     parser.add_argument(
         '--snapnum', 
         type=str,
@@ -279,15 +324,22 @@ if __name__ == "__main__":
     # Parsear los argumentos
     args = parser.parse_args()
 
+    simus: list[str] = parse_simus(args.simus or "")
     SNAPNUM: Snapnums = args.snapnum
-    workers = args.workers
-    metrics_path = args.output
+    workers: int = args.workers
+    metrics_path: str = args.output
 
     t0 = time.perf_counter()
 
     path = Path(graphs_root)
     simus_paths: list[Path] = list(path.rglob("*.xml"))
     simus_path_snapnum = list(filter(lambda path: is_snapnum(path, SNAPNUM), simus_paths))
+
+    if simus:
+        parent_name = lambda path: path.parent.name if is_random_simu(path) else path.parents[1].name
+        simus_path_snapnum = list(filter(lambda path: parent_name(path) in simus, simus_path_snapnum))
+
+    print(f"Simulaciones a procesar: {simus_path_snapnum}\n\n")
 
     if os.path.exists(metrics_path):
         with open(metrics_path, 'r') as json_data:
