@@ -121,23 +121,23 @@ def calculate_metrics(
         save_dict['hurst'] = hurst
 
     # Centralidad
-    if 'closeness' not in save_dict or \
-        len(save_dict['closeness']) > 0:
+    if 'closeness' not in save_dict and \
+        not len(save_dict['closeness']):
         closeness = g.closeness(weights='distance', normalized=True, cutoff=cutoff)
         save_dict['closeness'] = closeness
 
-    if 'betweenness' not in save_dict or \
-        len(save_dict['betweenness']) > 0:
+    if 'betweenness' not in save_dict and \
+        not len(save_dict['betweenness']):
         betweenness = g.betweenness(directed=False, weights='distance', cutoff=cutoff)
         save_dict['betweenness'] = betweenness
 
-    if 'eigenvector' not in save_dict or \
-        len(save_dict['eigenvector']) > 0:
+    if 'eigenvector' not in save_dict and \
+        not len(save_dict['eigenvector']):
         eigenvector = g.eigenvector_centrality(directed=False, weights='distance', scale=False)
         save_dict['eigenvector'] = eigenvector
 
-    if 'convergence' not in save_dict or \
-        len(save_dict['convergence']) > 0:
+    if 'convergence' not in save_dict and \
+        not len(save_dict['convergence']):
         convergence = g.convergence_degree()
         save_dict['convergence'] = convergence
 
