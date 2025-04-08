@@ -81,3 +81,11 @@ options:
 El script automáticamente lista las simulaciones que estén descargadas en el equipo.
 
 <!-- Si alguien llegara a leer esto, la verdad es que no hemos podido lograr que funcione correctamente, hemos utilizado máquinas virtuales de Azure y Google Colab, pero aún no damos, ojalá ya quede cada vez menos! -->
+
+### Comentarios extras
+
+He estado pensando demasiado en el tema de cómo optimizar este código utilizando la paralelización, y no solo con CPU, también con GPU utilizando los CUDA cores, pero no parece haber implementación directa de esto último con la librería iGraph, entonces... ¿qué más se puede hacer?
+
+Porque realmente la implememtación que se tiene puede estar bien, pero no es la mejor, solo se están calculando varios grafos al mismo tiempo, ¿qué tal paralelizar en la manera en que se está calculando el grafo utilizando subgrafos? Esto parece ser una muy buena opción, pero la implementación no la veo tan clara en realidad, porque primero es necesario discutir dónde están los cuellos de botella para ahí calcularlos y luego discutir cómo se haría, aunque parece ser otro tema. Tampoco tiene mucho sentido paralelizar todo, porque con networkx paralelizado para calcular betweenness, sigue siendo relativamente lento a comparación a igraph normal, ¿qué pasaría si paralelizo con igraph? Hice una implementación por mi parte, y no pareció dar mejores resultados, así que no vale la pena intentarlo en todo.
+
+Ahora, si el problema también es de RAM, ¿qué pasa con Dask y su memoria virtual? Es una idea pendiente pero que puede resultar genial, así que dejaré estos comentarios extras para responderme en un fúturo. Y, por lo antes mencionado de CUDA, ¿qué pasa con cugraph? No se ha podido ejecutar bien desde mi computador, pero es una idea que también está pendiente. ¿Se podrá hacer el programa para que utilice cugraph y Dask al mismo tiempo? ¿Será cugraph más lento que igraph? En cualquier caso, igraph es lo mejor en cuanto a performance se refiere, así que mi absoluto respeto para esta módulo.
