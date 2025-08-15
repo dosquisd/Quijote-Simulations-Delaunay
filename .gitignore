@@ -9,5 +9,7 @@ quijote/grafos/**/*.xml
 quijote/grafos/**/*.graphml
 quijote/grafos/*.json
 
+quijote/drive
+
 # No tengo git LFS, pero si lo tuviera, esto sería útil
 .gitattributes
