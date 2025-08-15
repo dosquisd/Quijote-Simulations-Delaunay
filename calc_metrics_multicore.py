@@ -34,7 +34,7 @@ def calculate_metrics(
     save_dict: dict,
     laplacian_path: str,
     cutoff: int | None = None,
-    graph_path: str = ""                      
+    graph_path: str = "",
 ) -> None:
     """
     Aquí se calculan literalmente todas las métricas que se necesitan para el grafo `g`,
@@ -64,11 +64,11 @@ def calculate_metrics(
         n = len(g.vs)
 
         for i in range(n):
-            for j in range(i+1, n):
+            for j in range(i + 1, n):
                 if shortest_paths[i][j] > 0:
-                    efficiency += 1/shortest_paths[i][j]
+                    efficiency += 1 / shortest_paths[i][j]
 
-        efficiency /= (n * (n - 1) / 2)
+        efficiency /= n * (n - 1) / 2
 
         return efficiency
 
@@ -82,21 +82,23 @@ def calculate_metrics(
         return global_efficiency(subgraph)
 
     # Métricas de eficiencia
-    if 'global_efficiency' not in save_dict:
+    if "global_efficiency" not in save_dict:
         try:
             efficiency = global_efficiency(g)
-            save_dict['global_efficiency'] = efficiency
+            save_dict["global_efficiency"] = efficiency
         except Exception as e:
             print(f"{graph_path} -- global_efficiency -- {repr(e)}")
 
-    if 'local_efficiencies' not in save_dict or \
-        len(save_dict['local_efficiencies']) > 0:
+    if (
+        "local_efficiencies" not in save_dict
+        or len(save_dict["local_efficiencies"]) > 0
+    ):
         try:
             local_efficiencies = [local_efficiency(g, v.index) for v in g.vs]
             avg_local_efficiency = sum(local_efficiencies) / len(local_efficiencies)
 
-            save_dict['local_efficiencies'] = local_efficiencies
-            save_dict['avg_local_efficiency'] = avg_local_efficiency
+            save_dict["local_efficiencies"] = local_efficiencies
+            save_dict["avg_local_efficiency"] = avg_local_efficiency
         except Exception as e:
             print(f"{graph_path} -- local_efficiencies -- {repr(e)}")
 
@@ -105,57 +107,51 @@ def calculate_metrics(
     degree_distribution = np.array(degree) / sum(degree)
 
     # Entropia
-    if 'entropy' not in save_dict:
+    if "entropy" not in save_dict:
         graph_entropy = entropy(degree_distribution)
-        save_dict['entropy'] = graph_entropy
+        save_dict["entropy"] = graph_entropy
 
     # Dimensión fractal (box counting)
-    if 'fractal_dimension' not in save_dict:
+    if "fractal_dimension" not in save_dict:
         # Falta buscar la función todavía, pero se aplicaría
         # sobre `degree_distribution`
         pass
 
     # Hurst
-    if 'hurst' not in save_dict:
-        hurst = nolds.hurst_rs(degree_distribution, fit='poly')
-        save_dict['hurst'] = hurst
+    if "hurst" not in save_dict:
+        hurst = nolds.hurst_rs(degree_distribution, fit="poly")
+        save_dict["hurst"] = hurst
 
     # Centralidad
-    if 'closeness' not in save_dict and \
-        not len(save_dict['closeness']):
-        closeness = g.closeness(weights='distance', normalized=True, cutoff=cutoff)
-        save_dict['closeness'] = closeness
+    if "closeness" not in save_dict or not len(save_dict["closeness"]):
+        closeness = g.closeness(weights="distance", normalized=True, cutoff=cutoff)
+        save_dict["closeness"] = closeness
 
-    if 'betweenness' not in save_dict and \
-        not len(save_dict['betweenness']):
-        betweenness = g.betweenness(directed=False, weights='distance', cutoff=cutoff)
-        save_dict['betweenness'] = betweenness
+    if "betweenness" not in save_dict or not len(save_dict["betweenness"]):
+        betweenness = g.betweenness(directed=False, weights="distance", cutoff=cutoff)
+        save_dict["betweenness"] = betweenness
 
-    if 'eigenvector' not in save_dict and \
-        not len(save_dict['eigenvector']):
-        eigenvector = g.eigenvector_centrality(directed=False, weights='distance', scale=False)
-        save_dict['eigenvector'] = eigenvector
+    if "eigenvector" not in save_dict or not len(save_dict["eigenvector"]):
+        eigenvector = g.eigenvector_centrality(
+            directed=False, weights="distance", scale=False
+        )
+        save_dict["eigenvector"] = eigenvector
 
-    if 'convergence' not in save_dict and \
-        not len(save_dict['convergence']):
+    if "convergence" not in save_dict or not len(save_dict["convergence"]):
         convergence = g.convergence_degree()
-        save_dict['convergence'] = convergence
+        save_dict["convergence"] = convergence
 
-    # Matriz laplaciana (La matriz laplaciana no se demora ada)
+    # Matriz laplaciana (La matriz laplaciana no se demora nada)
     G = g.to_networkx()
-    laplacian = nx.laplacian_matrix(G, weight='distance')
+    laplacian = nx.laplacian_matrix(G, weight="distance")
 
     # Guardar matriz si es un archivo .npz
-    if os.path.splitext(laplacian_path)[1] == '.npz':
+    if os.path.splitext(laplacian_path)[1] == ".npz":
         sp.save_npz(laplacian_path, laplacian)
-        save_dict['laplacian'] = laplacian_path
+        save_dict["laplacian"] = laplacian_path
 
 
-def save_metrics(
-    metrics: dict,
-    graph_path: str,
-    laplacian_path: str
-) -> None:
+def save_metrics(metrics: dict, graph_path: str, laplacian_path: str) -> None:
     """
     Calcula y guarda métricas para un grafo.
 
@@ -172,13 +168,13 @@ def save_metrics(
         para calcular las métricas.
     """
     g = ig.Graph.Read_GraphML(graph_path)
-    print(f'{graph_path} -- Vertices {len(g.vs):,} -- Aristas {len(g.es):,}')
+    print(f"{graph_path} -- Vertices {len(g.vs):,} -- Aristas {len(g.es):,}")
 
     t0 = time.perf_counter()
     calculate_metrics(g, metrics, laplacian_path)
     tf = time.perf_counter() - t0
 
-    print(f'{graph_path} -- Tiempo: {tf} segundos\n')
+    print(f"{graph_path} -- Tiempo: {tf} segundos\n")
 
 
 def is_snapnum(path: Path, snapnum: Snapnums) -> bool:
@@ -191,21 +187,21 @@ def is_snapnum(path: Path, snapnum: Snapnums) -> bool:
         snapnum (Snapnums): El número de snapshot que se desea comparar.
 
     Returns:
-        bool: `True` si el archivo corresponde al número de snapshot especificado, 
+        bool: `True` si el archivo corresponde al número de snapshot especificado,
         de lo contrario, `False`.
     """
-    name_without_ext: str = path.name.split('.')[0]
-    return name_without_ext.split('_')[-1] == snapnum
+    name_without_ext: str = path.name.split(".")[0]
+    return name_without_ext.split("_")[-1] == snapnum
 
 
 def is_random_simu(simu_path: Path) -> bool:
     """
     Determina si una simulación es aleatoria o no.
 
-    La función verifica si la simulación especificada por el argumento `simu_path` 
-    pertenece a una simulación aleatoria. Esto se realiza comprobando el nombre 
-    de la carpeta padre del archivo o directorio proporcionado. Si el nombre de 
-    la carpeta padre es un número, se considera que no pertenece a una simulación 
+    La función verifica si la simulación especificada por el argumento `simu_path`
+    pertenece a una simulación aleatoria. Esto se realiza comprobando el nombre
+    de la carpeta padre del archivo o directorio proporcionado. Si el nombre de
+    la carpeta padre es un número, se considera que no pertenece a una simulación
     aleatoria. En caso contrario, se clasifica como aleatoria.
 
     Parámetros:
@@ -236,10 +232,10 @@ def parse_simus(value: str) -> list[str]:
 
     if value == "":
         return []
-    
+
     # Separar las comas y quitar espacios en blanco
-    selected_simus = list(map(lambda s: s.strip(), value.split(',')))
-    
+    selected_simus = list(map(lambda s: s.strip(), value.split(",")))
+
     # Verificar que todas las simulaciones sean correctas
     invalid_simus = [s for s in selected_simus if s not in SIMUS_CHOICES]
     if invalid_simus:
@@ -247,7 +243,7 @@ def parse_simus(value: str) -> list[str]:
             f"Invalid simulation(s): {', '.join(invalid_simus)}. "
             f"Valid choices are: {', '.join(SIMUS_CHOICES)}"
         )
-    
+
     return selected_simus
 
 
@@ -277,48 +273,55 @@ def main(path_simu: Path, metrics: dict, snapnum: Snapnums = "000") -> dict:
         save_metrics(
             metrics=metrics_to_calculate,
             graph_path=str(path_simu),
-            laplacian_path=str(laplacian_path)
+            laplacian_path=str(laplacian_path),
         )
     except Exception as e:
         print(repr(e))
-    
+
     return metrics
 
 
 if __name__ == "__main__":
-    metrics_path: str = f'{graphs_root}/metrics.json'
-    SIMUS_CHOICES: list[str] = [simu for simu in os.listdir(graphs_root) 
-                                if os.path.isdir(os.path.join(graphs_root, simu))]
-    epilog_text = "Simulaciones disponibles: " + "".join(f"{simu} " for simu in SIMUS_CHOICES)
+    metrics_path: str = f"{graphs_root}/metrics.json"
+    SIMUS_CHOICES: list[str] = [
+        simu
+        for simu in os.listdir(graphs_root)
+        if os.path.isdir(os.path.join(graphs_root, simu))
+    ]
+    epilog_text = "Simulaciones disponibles: " + "".join(
+        f"{simu} " for simu in SIMUS_CHOICES
+    )
 
     # Configurar el parser de argumentos
-    parser = argparse.ArgumentParser(description='Calcular métricas de grafos Delaunay')
+    parser = argparse.ArgumentParser(description="Calcular métricas de grafos Delaunay")
     parser.add_argument(
-        '--simus',
+        "--simus",
         type=str,
         default="",
-        help=('Simulación(es) a procesar. Si no se especifica, se procesan todas. ' +
-            'Para escoger más de una simulación se debe separar por comas: "simu1,simu2" (default: ""). ' +
-            epilog_text)
+        help=(
+            "Simulación(es) a procesar. Si no se especifica, se procesan todas. "
+            + 'Para escoger más de una simulación se debe separar por comas: "simu1,simu2" (default: ""). '
+            + epilog_text
+        ),
     )
     parser.add_argument(
-        '--snapnum', 
+        "--snapnum",
         type=str,
         choices=["000", "001", "002", "003", "004"],
         default="000",
-        help='Número de snapshot a procesar (default: 000)'
+        help="Número de snapshot a procesar (default: 000)",
     )
     parser.add_argument(
-        '--workers',
+        "--workers",
         type=int,
         default=4,
-        help='Número de procesos paralelos (default: 4)'
+        help="Número de procesos paralelos (default: 4)",
     )
     parser.add_argument(
-        '--output',
+        "--output",
         type=str,
         default=metrics_path,
-        help=f'Ruta para guardar el archivo JSON de métricas (default: {metrics_path})'
+        help=f"Ruta para guardar el archivo JSON de métricas (default: {metrics_path})",
     )
 
     # Parsear los argumentos
@@ -333,18 +336,26 @@ if __name__ == "__main__":
 
     path = Path(graphs_root)
     simus_paths: list[Path] = list(path.rglob("*.xml"))
-    simus_path_snapnum = list(filter(lambda path: is_snapnum(path, SNAPNUM), simus_paths))
+    simus_path_snapnum = list(
+        filter(lambda path: is_snapnum(path, SNAPNUM), simus_paths)
+    )
 
     if simus:
-        parent_name = lambda path: path.parent.name if is_random_simu(path) else path.parents[1].name
-        simus_path_snapnum = list(filter(lambda path: parent_name(path) in simus, simus_path_snapnum))
+        parent_name = (  # noqa: E731
+            lambda path: path.parent.name
+            if is_random_simu(path)
+            else path.parents[1].name
+        )
+        simus_path_snapnum = list(
+            filter(lambda path: parent_name(path) in simus, simus_path_snapnum)
+        )
         metrics_path = os.path.splitext(metrics_path)[0] + f"_{args.simus}.json"
-    
+
     print(f"Ruta donde se guardaran las simulaciones: {metrics_path}\n")
     print(f"Simulaciones a procesar: {[simu.name for simu in simus_path_snapnum]}\n\n")
 
     if os.path.exists(metrics_path):
-        with open(metrics_path, 'r') as json_data:
+        with open(metrics_path, "r") as json_data:
             metrics = json.load(json_data)
     else:
         metrics = {}
@@ -379,18 +390,18 @@ if __name__ == "__main__":
 
                 if SNAPNUM not in metrics[simu][realization]:
                     metrics[simu][realization][SNAPNUM] = {}
-                
+
                 snap_data = real_data[SNAPNUM]
                 metrics[simu][realization][SNAPNUM].update(snap_data)
 
     if save:
-        print('Guardando métricas...')
-        with open(metrics_path, 'w') as json_data:
+        print("Guardando métricas...")
+        with open(metrics_path, "w") as json_data:
             json.dump(
                 metrics,
                 json_data,
-                default=lambda x: x.tolist() if hasattr(x, 'tolist') else x,
-                indent=4
+                default=lambda x: x.tolist() if hasattr(x, "tolist") else x,
+                indent=4,
             )
 
-    print(f'Tiempo total: {time.perf_counter() - t0} segundos')
+    print(f"Tiempo total: {time.perf_counter() - t0} segundos")
