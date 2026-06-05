@@ -7,13 +7,33 @@ requires-python = "==3.12.10"
 dependencies = [
     "igraph==0.11.6",
     "ipykernel==6.29.5",
+    "lxml>=6.1.1",
     "matplotlib==3.10.0",
     "networkx==3.4.2",
     "nolds==0.6.1",
     "numpy==2.2.2",
     "pandas==2.2.3",
-    # "pylians>=0.12",
+    "pylians>=0.12",
     "scipy==1.15.1",
     "seaborn==0.13.2",
     "typing==3.10.0.0",
 ]
+
+[dependency-groups]
+dev = ["ruff>=0.14.14"]
+
+[tool.ruff]
+exclude = [".git", ".ipynb_checkpoints", ".pytest_cache", ".venv"]
+line-length = 88
+indent-width = 4
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+fixable = ["ALL"]
+extend-select = ["I"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
