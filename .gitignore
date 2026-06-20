@@ -9,6 +9,7 @@ quijote/grafos/**/*.xml
 quijote/grafos/**/*.graphml
 quijote/grafos/*.json
 quijote/**/*.json
+quijote/metrics/**/*.txt
 *.log
 
 quijote/drive
