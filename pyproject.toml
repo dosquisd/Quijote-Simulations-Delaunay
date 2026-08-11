@@ -3,7 +3,7 @@ name = "delaunay"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = "==3.12.10"
+requires-python = ">=3.12.10,<3.13"
 dependencies = [
     "globus-cli>=3.42.0",
     "igraph==0.11.6",
@@ -22,7 +22,20 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["ruff>=0.14.14"]
+dev = [
+    "ruff>=0.14.14",
+    "jupyter>=1.1.0",
+]
+
+[tool.uv]
+build-constraint-dependencies = [
+    "cython==0.29.37",
+    "numpy==2.2.2",
+    "setuptools==75.8.0",
+]
+
+[tool.uv.sources]
+pylians = { path = "vendor/pylians" }
 
 [tool.ruff]
 exclude = [".git", ".ipynb_checkpoints", ".pytest_cache", ".venv"]
