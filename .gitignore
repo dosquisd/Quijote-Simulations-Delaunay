@@ -1,4 +1,12 @@
 .venv
+.direnv
+result
+.ipynb_checkpoints
+
+# Artefactos de build del vendor de Pylians
+vendor/pylians/**/build/
+vendor/pylians/**/*.egg-info/
+__pycache__/
 
 quijote/Snapshots
 
