@@ -24,3 +24,5 @@ quijote/drive
 
 # No tengo git LFS, pero si lo tuviera, esto sería útil
 .gitattributes
+
+.env
