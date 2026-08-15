@@ -413,6 +413,21 @@ def parse_simus(value: str, simu_choices: list[str]) -> list[str]:
     return selected_simus
 
 
+def parse_snapnums(value: str) -> list[str]:
+    if value.strip() == "":
+        return []
+
+    selected_snapnums = [s.strip() for s in value.split(",") if s.strip()]
+    invalid_snapnums = [s for s in selected_snapnums if s not in {"000", "001", "002", "003", "004"}]
+    if invalid_snapnums:
+        raise argparse.ArgumentTypeError(
+            f"Invalid snapnum(s): {', '.join(invalid_snapnums)}. "
+            "Valid choices are: 000, 001, 002, 003, 004"
+        )
+
+    return selected_snapnums
+
+
 if __name__ == "__main__":
     # Setup logging
     logger = setup_logging()
@@ -452,9 +467,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--snapnum",
         type=str,
-        choices=["000", "001", "002", "003", "004"],
         default="000",
-        help="Número de snapshot a procesar (default: %(default)s)",
+        help=(
+            "Número(s) de snapshot a procesar, separados por coma si hay varios. "
+            "Ejemplo: 000,001,002 (default: %(default)s)"
+        ),
     )
     parser.add_argument(
         "--workers",
@@ -471,13 +488,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     simus = parse_simus(args.simus, simu_choices)
-    snapnum: Snapnums = args.snapnum
+    snapnums = parse_snapnums(args.snapnum)
     workers = args.workers
     force = args.force
 
     simus_to_process = simus if simus else simu_choices
     logger.info(f"Simulations to process: {simus_to_process}")
-    logger.info(f"Snapshot: {snapnum}")
+    logger.info(f"Snapnums: {snapnums}")
     logger.info(f"Force mode: {force}")
 
     # Build tasks
@@ -489,83 +506,84 @@ if __name__ == "__main__":
             logger.error(f"Simulation folder not found: {simu_path}")
             continue
 
-        graph_files = list(simu_path.rglob(f"*_{snapnum}*.xml"))
-        if not graph_files:
-            logger.warning(f"No graph XML files found for {simu_name}_{snapnum}")
-            continue
+        for snapnum in snapnums:
+            graph_files = list(simu_path.rglob(f"*_{snapnum}*.xml"))
+            if not graph_files:
+                logger.warning(f"No graph XML files found for {simu_name}_{snapnum}")
+                continue
 
-        for graph_file in graph_files:
-            if simu_name == "randoms":
-                realization = "_"
-            else:
-                realization = graph_file.parent.name
+            for graph_file in graph_files:
+                if simu_name == "randoms":
+                    realization = "_"
+                else:
+                    realization = graph_file.parent.name
 
-            paths = get_metric_paths(simu_name, realization, snapnum, graph_file)
+                paths = get_metric_paths(simu_name, realization, snapnum, graph_file)
 
-            # Check if fast metrics task is needed
-            fast_needed = False
-            if force:
-                fast_needed = True
-            else:
-                fast_list = [
-                    "entropy",
-                    "hurst",
-                    "eigenvector",
-                    "local_efficiencies",
-                    "laplacian",
-                ]
-                for m in fast_list:
-                    if m == "local_efficiencies":
-                        if (
-                            not paths["local_efficiencies"].exists()
-                            or not paths["avg_local_efficiency"].exists()
-                        ):
-                            fast_needed = True
-                            break
-                    elif m == "laplacian":
-                        if (
-                            not paths["laplacian"].exists()
-                            or not paths["laplacian_txt"].exists()
-                        ):
-                            fast_needed = True
-                            break
-                    else:
-                        if not paths[m].exists():
-                            fast_needed = True
-                            break
+                # Check if fast metrics task is needed
+                fast_needed = False
+                if force:
+                    fast_needed = True
+                else:
+                    fast_list = [
+                        "entropy",
+                        "hurst",
+                        "eigenvector",
+                        "local_efficiencies",
+                        "laplacian",
+                    ]
+                    for m in fast_list:
+                        if m == "local_efficiencies":
+                            if (
+                                not paths["local_efficiencies"].exists()
+                                or not paths["avg_local_efficiency"].exists()
+                            ):
+                                fast_needed = True
+                                break
+                        elif m == "laplacian":
+                            if (
+                                not paths["laplacian"].exists()
+                                or not paths["laplacian_txt"].exists()
+                            ):
+                                fast_needed = True
+                                break
+                        else:
+                            if not paths[m].exists():
+                                fast_needed = True
+                                break
 
-            if fast_needed:
-                tasks.append(
-                    CalculationTask(
-                        simu_name=simu_name,
-                        realization=realization,
-                        snapnum=snapnum,
-                        graph_path=str(graph_file),
-                        task_type="fast_metrics",
-                        force=force,
-                        cutoff=None,
-                    )
-                )
-
-            # Check slow metrics tasks
-            for slow_m in [
-                "global_efficiency",
-                "closeness",
-                "betweenness",
-                "convergence",
-            ]:
-                if force or not paths[slow_m].exists():
+                if fast_needed:
                     tasks.append(
                         CalculationTask(
                             simu_name=simu_name,
                             realization=realization,
                             snapnum=snapnum,
                             graph_path=str(graph_file),
-                            task_type=slow_m,
+                            task_type="fast_metrics",
                             force=force,
                             cutoff=None,
                         )
                     )
+
+                # Check slow metrics tasks
+                for slow_m in [
+                    "global_efficiency",
+                    "closeness",
+                    "betweenness",
+                    "convergence",
+                ]:
+                    if force or not paths[slow_m].exists():
+                        tasks.append(
+                            CalculationTask(
+                                simu_name=simu_name,
+                                realization=realization,
+                                snapnum=snapnum,
+                                graph_path=str(graph_file),
+                                task_type=slow_m,
+                                force=force,
+                                cutoff=None,
+                            )
+                        )
 
     if not tasks:
         logger.info(
