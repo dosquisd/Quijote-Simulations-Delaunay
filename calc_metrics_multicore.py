@@ -21,6 +21,7 @@ graphs_root: str = f"{root}/grafos"
 metrics_dir: str = f"{root}/metrics"
 
 MAX_WORKERS: int = os.cpu_count() or 1
+CURRENT_GRAPH: ig.Graph | None = None
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -113,6 +114,12 @@ def local_efficiency(g: ig.Graph, v: int) -> float:
     return global_efficiency(subgraph)
 
 
+def local_efficiency_for_vertex(v: int) -> float:
+    if CURRENT_GRAPH is None:
+        raise RuntimeError("CURRENT_GRAPH is not set")
+    return local_efficiency(CURRENT_GRAPH, v)
+
+
 def get_metric_paths(
     simu_name: str, realization: str, snapnum: str, graph_file: Path
 ) -> MetricPaths:
@@ -135,6 +142,8 @@ def get_metric_paths(
 
 
 def worker_task(task: CalculationTask) -> None:
+    global CURRENT_GRAPH
+
     simu_name = task.simu_name
     realization = task.realization
     snapnum = task.snapnum
@@ -306,6 +315,7 @@ def worker_task(task: CalculationTask) -> None:
                 t0 = time.perf_counter()
                 vertices = list(g.vs)
                 n_vertices = len(vertices)
+                CURRENT_GRAPH = g
                 if n_vertices > 1000:
                     n_threads = max(2, MAX_WORKERS // 4)
                     with concurrent.futures.ProcessPoolExecutor(
@@ -313,7 +323,8 @@ def worker_task(task: CalculationTask) -> None:
                     ) as executor:
                         local_effs = list(
                             executor.map(
-                                lambda v: local_efficiency(g, v.index), vertices
+                                local_efficiency_for_vertex,
+                                (v.index for v in vertices),
                             )
                         )
                 else:
@@ -334,6 +345,8 @@ def worker_task(task: CalculationTask) -> None:
                     f"{task_id} - local efficiency calculation failed: {repr(e)}",
                     exc_info=True,
                 )
+            finally:
+                CURRENT_GRAPH = None
 
     else:
         # Slow metrics
