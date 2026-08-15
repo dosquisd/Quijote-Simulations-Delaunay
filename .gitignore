@@ -6,6 +6,17 @@ result
 # Artefactos de build del vendor de Pylians
 vendor/pylians/**/build/
 vendor/pylians/**/*.egg-info/
+vendor/pylians/library/density_field_library/*.c
+vendor/pylians/library/HI_clusters_library/*.c
+vendor/pylians/library/HI_library/*.c
+vendor/pylians/library/integration_library/*.c
+vendor/pylians/library/MAS_library/*.c
+vendor/pylians/library/Pk_library/*.c
+vendor/pylians/library/redshift_space_library/*.c
+vendor/pylians/library/smoothing_library/*.c
+vendor/pylians/library/sorting_library/*.c
+vendor/pylians/library/void_library/*.c
+
 __pycache__/
 
 quijote/Snapshots
