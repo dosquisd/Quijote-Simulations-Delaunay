@@ -531,6 +531,7 @@ if __name__ == "__main__":
                         "eigenvector",
                         "local_efficiencies",
                         "laplacian",
+                        "n_nodes",
                     ]
                     for m in fast_list:
                         if m == "local_efficiencies":
