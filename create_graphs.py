@@ -1,3 +1,4 @@
+import argparse
 import concurrent.futures
 import ctypes
 import logging
@@ -217,11 +218,47 @@ def process_one(args: tuple[str, str, int, str]) -> tuple[str, bool, str]:
         del FoF
 
 
-def build_combinations() -> list[tuple[str, str, int, str]]:
+def _parse_csv(value: str) -> list[str]:
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def _parse_snapnums(value: str | None) -> list[int] | None:
+    if value is None:
+        return None
+    return [int(item) for item in _parse_csv(value)]
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Construye grafos de Delaunay para simulaciones FoF de Quijote."
+    )
+    parser.add_argument(
+        "--simus",
+        type=_parse_csv,
+        default=None,
+        help="Lista separada por comas de simulaciones a procesar. Si no se indica, se procesan todas.",
+    )
+    parser.add_argument(
+        "--snapnum",
+        type=str,
+        default=None,
+        help="Lista separada por comas de snapnums a procesar. Si no se indica, se usan los valores por defecto del script.",
+    )
+    return parser.parse_args()
+
+
+def build_combinations(
+    simus_filter: set[str] | None = None,
+    snapnums_filter: set[int] | None = None,
+) -> list[tuple[str, str, int, str]]:
     combinations = []
+    snapnums_to_iterate = sorted(snapnums_filter) if snapnums_filter is not None else snapnums
     for simu in os.listdir(fof_root):
         fof_tmp_path = f"{fof_root}/{simu}"
         if os.path.isfile(fof_tmp_path):
+            continue
+
+        if simus_filter is not None and simu not in simus_filter:
             continue
 
         graph_tmp_path = f"{graphs_root}/{simu}"
@@ -233,7 +270,7 @@ def build_combinations() -> list[tuple[str, str, int, str]]:
             if not os.path.exists(graph_tmp_path_i):
                 os.mkdir(graph_tmp_path_i)
 
-            for snapnum in snapnums:
+            for snapnum in snapnums_to_iterate:
                 if simu == "fiducial_HR" and snapnum > 3:
                     continue
 
@@ -336,8 +373,17 @@ def run_pool(combinations: list[tuple[str, str, int, str]]) -> None:
 
 
 if __name__ == "__main__":
-    combinations = build_combinations()
+    args = parse_args()
+    snapnums_to_use = _parse_snapnums(args.snapnum)
+    combinations = build_combinations(
+        simus_filter=set(args.simus) if args.simus is not None else None,
+        snapnums_filter=set(snapnums_to_use) if snapnums_to_use is not None else None,
+    )
     logger.info(f"Total combinations to process: {len(combinations)}")
     logger.debug(f"Usando MAX_WORKERS={MAX_WORKERS}")
+    if args.simus is not None:
+        logger.info(f"Simulaciones filtradas por consola: {', '.join(args.simus)}")
+    if snapnums_to_use is not None:
+        logger.info(f"Snapnums filtrados por consola: {', '.join(str(s) for s in snapnums_to_use)}")
 
     run_pool(combinations)
