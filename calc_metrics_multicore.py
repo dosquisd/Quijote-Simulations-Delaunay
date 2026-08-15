@@ -20,6 +20,8 @@ root: str = "./quijote"
 graphs_root: str = f"{root}/grafos"
 metrics_dir: str = f"{root}/metrics"
 
+MAX_WORKERS: int = os.cpu_count() or 1
+
 # Setup logger
 logger = logging.getLogger(__name__)
 
@@ -36,6 +38,7 @@ class MetricPaths(TypedDict):
     convergence: Path
     laplacian: Path
     laplacian_txt: Path
+    n_nodes: Path
 
 
 class CalculationTask(NamedTuple):
@@ -82,6 +85,10 @@ def setup_logging(log_file: str = "metrics.log") -> logging.Logger:
     return logger
 
 
+def n_nodes(g: ig.Graph) -> int:
+    return len(g.vs)
+
+
 def global_efficiency(g: ig.Graph) -> float:
     shortest_paths = g.distances()
     efficiency = 0.0
@@ -123,6 +130,7 @@ def get_metric_paths(
         "convergence": simu_dir / f"{prefix}_convergence.json",
         "laplacian": graph_file.parent / f"laplacian_{snapnum}.npz",
         "laplacian_txt": simu_dir / f"{prefix}_laplacian.txt",
+        "n_nodes": simu_dir / f"{prefix}_n_nodes.txt",
     }
 
 
@@ -207,6 +215,21 @@ def worker_task(task: CalculationTask) -> None:
             else:
                 degree_dist = np.zeros(len(degree))
 
+        if "n_nodes" in metrics_to_calc:
+            try:
+                t0 = time.perf_counter()
+                val = n_nodes(g)
+                with open(paths["n_nodes"], "w") as f:
+                    f.write(f"{val}\n")
+                logger.info(
+                    f"{task_id} - n_nodes: {val} ({time.perf_counter() - t0:.2f}s)"
+                )
+            except Exception as e:
+                logger.error(
+                    f"{task_id} - n_nodes calculation failed: {repr(e)}",
+                    exc_info=True,
+                )
+
         if "entropy" in metrics_to_calc:
             try:
                 t0 = time.perf_counter()
@@ -284,12 +307,12 @@ def worker_task(task: CalculationTask) -> None:
                 vertices = list(g.vs)
                 n_vertices = len(vertices)
                 if n_vertices > 1000:
-                    n_threads = max(2, os.cpu_count() // 4)
-                    with concurrent.futures.ThreadPoolExecutor(
+                    n_threads = max(2, MAX_WORKERS // 4)
+                    with concurrent.futures.ProcessPoolExecutor(
                         max_workers=n_threads
-                    ) as thread_executor:
+                    ) as executor:
                         local_effs = list(
-                            thread_executor.map(
+                            executor.map(
                                 lambda v: local_efficiency(g, v.index), vertices
                             )
                         )
@@ -363,10 +386,10 @@ def parse_simus(value: str, simu_choices: list[str]) -> list[str]:
     if value.strip() == "":
         return []
 
-    # Separar las comas y quitar espacios en blanco
+    # Split by commas and strip whitespace
     selected_simus = list(map(lambda s: s.strip(), value.split(",")))
 
-    # Verificar que todas las simulaciones sean correctas
+    # Verify that all simulations are valid
     invalid_simus = [s for s in selected_simus if s not in simu_choices]
     if invalid_simus:
         raise argparse.ArgumentTypeError(
@@ -545,10 +568,10 @@ if __name__ == "__main__":
     logger.info(f"  - Slow metrics tasks (individual): {slow_tasks_count}")
 
     # Determine worker count
-    recommended_workers = max(1, os.cpu_count() - 1)
+    recommended_workers = max(1, MAX_WORKERS - 1)
     workers_to_use = workers if workers is not None else recommended_workers
     logger.info(
-        f"Using {workers_to_use} worker processes (available cores: {os.cpu_count()})"
+        f"Using {workers_to_use} worker processes (available cores: {MAX_WORKERS})"
     )
 
     # Run task pool
