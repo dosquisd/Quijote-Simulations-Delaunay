@@ -167,6 +167,7 @@ def worker_task(task: CalculationTask) -> None:
             "eigenvector",
             "local_efficiencies",
             "laplacian",
+            "n_nodes",
         ]
         for m in fast_list:
             if force:
