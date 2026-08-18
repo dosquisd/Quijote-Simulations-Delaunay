@@ -17,6 +17,7 @@ dependencies = [
     "psutil>=7.0.0",
     "pylians>=0.12",
     "scienceplots>=2.2.2",
+    "scikit-learn>=1.9.0",
     "scipy==1.15.1",
     "seaborn==0.13.2",
     "typing==3.10.0.0",
