@@ -146,7 +146,9 @@ def local_efficiency(g: ig.Graph, v: int) -> float:
     if len(neighbors) <= 1:
         return 0.0
     subgraph = g.subgraph(neighbors)
-    return global_efficiency(subgraph)
+
+    # Use a chunk size larger than the number of vertices to avoid unnecessary chunking
+    return global_efficiency(subgraph, chunk_size=subgraph.vcount() + 10)
 
 
 def local_efficiency_for_vertex(v: int) -> float:
@@ -447,9 +449,7 @@ def parse_snapnums(value: str) -> list[str]:
 
     valid_choices = set(Snapnums.__args__)
     selected_snapnums = [s.strip() for s in value.split(",") if s.strip()]
-    invalid_snapnums = [
-        s for s in selected_snapnums if s not in valid_choices
-    ]
+    invalid_snapnums = [s for s in selected_snapnums if s not in valid_choices]
     if invalid_snapnums:
         raise argparse.ArgumentTypeError(
             f"Invalid snapshot number(s): {', '.join(invalid_snapnums)}. "
