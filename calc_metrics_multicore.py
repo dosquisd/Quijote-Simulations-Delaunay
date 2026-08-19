@@ -27,6 +27,29 @@ CURRENT_GRAPH: ig.Graph | None = None
 logger = logging.getLogger(__name__)
 
 
+FAST_METRICS = frozenset(
+    {
+        "entropy",
+        "hurst",
+        "eigenvector",
+        "local_efficiencies",
+        "laplacian",
+        "n_nodes",
+    }
+)
+
+SLOW_METRICS = frozenset(
+    {
+        "global_efficiency",
+        "closeness",
+        "betweenness",
+        "convergence",
+    }
+)
+
+ALL_METRICS = FAST_METRICS | SLOW_METRICS
+
+
 class MetricPaths(TypedDict):
     entropy: Path
     hurst: Path
@@ -48,12 +71,12 @@ class CalculationTask(NamedTuple):
     snapnum: str
     graph_path: str
     task_type: str
-    force: bool
+    force_metrics: frozenset[str]
     cutoff: int | None
 
 
-def setup_logging(log_file: str = "metrics.log") -> logging.Logger:
-    """Configura logging dual: consola (DEBUG) + archivo (DEBUG)."""
+def setup_logging(log_file: str = "logs/metrics.log") -> logging.Logger:
+    """Configure dual logging to the console and a file at DEBUG level."""
     log_path = Path(log_file)
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -90,12 +113,8 @@ def n_nodes(g: ig.Graph) -> int:
     return len(g.vs)
 
 
-# I just noticed that the global_efficiency function is not using the weights, so...
-# I'm adding this new parameter to keep retrocompatibility with the previous code.
-# For the same reason, `global_efficiency` and `local_efficiency`,
-# should be recalculated with the weights parameter, but for now, I will keep it as is.
 def global_efficiency(
-    g: ig.Graph, weights: Optional[str] = None, chunk_size: int = 1000
+    g: ig.Graph, weights: Optional[str] = "distance", chunk_size: int = 1000
 ) -> float:
     n = g.vcount()
     if n <= 1:
@@ -165,7 +184,7 @@ def worker_task(task: CalculationTask) -> None:
     snapnum = task.snapnum
     graph_path = Path(task.graph_path)
     task_type = task.task_type
-    force = task.force
+    force_metrics = task.force_metrics
     cutoff = task.cutoff
 
     task_id = f"{simu_name}/{realization}/{snapnum}"
@@ -177,35 +196,27 @@ def worker_task(task: CalculationTask) -> None:
     # Check what actually needs to be calculated
     metrics_to_calc = []
     if task_type == "fast_metrics":
-        fast_list = [
-            "entropy",
-            "hurst",
-            "eigenvector",
-            "local_efficiencies",
-            "laplacian",
-            "n_nodes",
-        ]
-        for m in fast_list:
-            if force:
+        for m in FAST_METRICS:
+            if m in force_metrics:
                 metrics_to_calc.append(m)
+            elif m == "local_efficiencies":
+                if (
+                    not paths["local_efficiencies"].exists()
+                    or not paths["avg_local_efficiency"].exists()
+                ):
+                    metrics_to_calc.append(m)
+            elif m == "laplacian":
+                if (
+                    not paths["laplacian"].exists()
+                    or not paths["laplacian_txt"].exists()
+                ):
+                    metrics_to_calc.append(m)
             else:
-                if m == "local_efficiencies":
-                    if (
-                        not paths["local_efficiencies"].exists()
-                        or not paths["avg_local_efficiency"].exists()
-                    ):
-                        metrics_to_calc.append(m)
-                elif m == "laplacian":
-                    if (
-                        not paths["laplacian"].exists()
-                        or not paths["laplacian_txt"].exists()
-                    ):
-                        metrics_to_calc.append(m)
-                else:
-                    if not paths[m].exists():
-                        metrics_to_calc.append(m)
+                if not paths[m].exists():
+                    metrics_to_calc.append(m)
+
     else:
-        if force or not paths[task_type].exists():
+        if task_type in force_metrics or not paths[task_type].exists():
             metrics_to_calc.append(task_type)
 
     if not metrics_to_calc:
@@ -434,17 +445,41 @@ def parse_snapnums(value: str) -> list[str]:
     if value.strip() == "":
         return []
 
+    valid_choices = set(Snapnums.__args__)
     selected_snapnums = [s.strip() for s in value.split(",") if s.strip()]
     invalid_snapnums = [
-        s for s in selected_snapnums if s not in {"000", "001", "002", "003", "004"}
+        s for s in selected_snapnums if s not in valid_choices
     ]
     if invalid_snapnums:
         raise argparse.ArgumentTypeError(
-            f"Invalid snapnum(s): {', '.join(invalid_snapnums)}. "
-            "Valid choices are: 000, 001, 002, 003, 004"
+            f"Invalid snapshot number(s): {', '.join(invalid_snapnums)}. "
+            f"Valid choices are: {', '.join(sorted(valid_choices))}"
         )
 
     return selected_snapnums
+
+
+def parse_force(value: str) -> frozenset[str]:
+    selected = {item.strip() for item in value.split(",") if item.strip()}
+
+    if not selected:
+        return frozenset()
+
+    if "all" in selected:
+        if len(selected) > 1:
+            raise argparse.ArgumentTypeError(
+                "'all' cannot be combined with specific metrics"
+            )
+        return ALL_METRICS
+
+    invalid = selected - ALL_METRICS
+    if invalid:
+        raise argparse.ArgumentTypeError(
+            f"Invalid metric(s): {', '.join(sorted(invalid))}. "
+            f"Valid choices: {', '.join(sorted(ALL_METRICS))} or all"
+        )
+
+    return frozenset(selected)
 
 
 if __name__ == "__main__":
@@ -478,8 +513,8 @@ if __name__ == "__main__":
         type=str,
         default="",
         help=(
-            "Simulation(es) a procesar. Si no se especifica, se procesan todas. "
-            + 'Para escoger más de una simulación se debe separar por comas: "simu1,simu2" (default: ""). '
+            "Simulation(s) to process. If omitted, all simulations are processed. "
+            + 'To select multiple simulations, separate them with commas: "simu1,simu2" (default: ""). '
             + epilog_text
         ),
     )
@@ -488,20 +523,25 @@ if __name__ == "__main__":
         type=str,
         default="000",
         help=(
-            "Número(s) de snapshot a procesar, separados por coma si hay varios. "
-            "Ejemplo: 000,001,002 (default: %(default)s)"
+            "Snapshot number(s) to process, separated by commas when selecting multiple values. "
+            "Example: 000,001,002 (default: %(default)s)"
         ),
     )
     parser.add_argument(
         "--workers",
         type=int,
         default=None,
-        help="Número de procesos paralelos (default: %(default)s)",
+        help="Number of parallel worker processes (default: %(default)s)",
     )
     parser.add_argument(
         "--force",
-        action="store_true",
-        help="Forzar recálculo incluso si temporales existen (default: False)",
+        type=parse_force,
+        default=frozenset(),
+        metavar="METRICS",
+        help=(
+            "Force recalculation of comma-separated metrics "
+            f"({', '.join(sorted(ALL_METRICS))}), or use 'all'"
+        ),
     )
 
     args = parser.parse_args()
@@ -509,12 +549,12 @@ if __name__ == "__main__":
     simus = parse_simus(args.simus, simu_choices)
     snapnums = parse_snapnums(args.snapnum)
     workers = args.workers
-    force = args.force
+    force_metrics = args.force
 
     simus_to_process = simus if simus else simu_choices
     logger.info(f"Simulations to process: {simus_to_process}")
     logger.info(f"Snapnums: {snapnums}")
-    logger.info(f"Force mode: {force}")
+    logger.info(f"Metrics to force: {sorted(force_metrics) or 'none'}")
 
     # Build tasks
     tasks = []
@@ -541,26 +581,18 @@ if __name__ == "__main__":
 
                 # Check if fast metrics task is needed
                 fast_needed = False
-                if force:
+                if force_metrics & FAST_METRICS:
                     fast_needed = True
                 else:
-                    fast_list = [
-                        "entropy",
-                        "hurst",
-                        "eigenvector",
-                        "local_efficiencies",
-                        "laplacian",
-                        "n_nodes",
-                    ]
-                    for m in fast_list:
-                        if m == "local_efficiencies":
+                    for metric in FAST_METRICS:
+                        if metric == "local_efficiencies":
                             if (
                                 not paths["local_efficiencies"].exists()
                                 or not paths["avg_local_efficiency"].exists()
                             ):
                                 fast_needed = True
                                 break
-                        elif m == "laplacian":
+                        elif metric == "laplacian":
                             if (
                                 not paths["laplacian"].exists()
                                 or not paths["laplacian_txt"].exists()
@@ -568,7 +600,7 @@ if __name__ == "__main__":
                                 fast_needed = True
                                 break
                         else:
-                            if not paths[m].exists():
+                            if not paths[metric].exists():
                                 fast_needed = True
                                 break
 
@@ -580,7 +612,7 @@ if __name__ == "__main__":
                             snapnum=snapnum,
                             graph_path=str(graph_file),
                             task_type="fast_metrics",
-                            force=force,
+                            force_metrics=force_metrics,
                             cutoff=None,
                         )
                     )
@@ -592,7 +624,7 @@ if __name__ == "__main__":
                     "betweenness",
                     "convergence",
                 ]:
-                    if force or not paths[slow_m].exists():
+                    if slow_m in force_metrics or not paths[slow_m].exists():
                         tasks.append(
                             CalculationTask(
                                 simu_name=simu_name,
@@ -600,7 +632,7 @@ if __name__ == "__main__":
                                 snapnum=snapnum,
                                 graph_path=str(graph_file),
                                 task_type=slow_m,
-                                force=force,
+                                force_metrics=force_metrics,
                                 cutoff=None,
                             )
                         )
