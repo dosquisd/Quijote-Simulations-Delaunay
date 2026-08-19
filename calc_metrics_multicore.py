@@ -5,7 +5,7 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Literal, NamedTuple, TypedDict
+from typing import Literal, NamedTuple, Optional, TypedDict
 
 import igraph as ig
 import networkx as nx
@@ -90,20 +90,36 @@ def n_nodes(g: ig.Graph) -> int:
     return len(g.vs)
 
 
-def global_efficiency(g: ig.Graph) -> float:
-    shortest_paths = g.distances()
-    efficiency = 0.0
-    n = len(g.vs)
+# I just noticed that the global_efficiency function is not using the weights, so...
+# I'm adding this new parameter to keep retrocompatibility with the previous code.
+# For the same reason, `global_efficiency` and `local_efficiency`,
+# should be recalculated with the weights parameter, but for now, I will keep it as is.
+def global_efficiency(
+    g: ig.Graph, weights: Optional[str] = None, chunk_size: int = 1000
+) -> float:
+    n = g.vcount()
     if n <= 1:
         return 0.0
 
-    for i in range(n):
-        for j in range(i + 1, n):
-            if shortest_paths[i][j] > 0:
-                efficiency += 1.0 / shortest_paths[i][j]
+    total = 0.0
 
-    efficiency /= n * (n - 1) / 2.0
-    return efficiency
+    for start in range(0, n, chunk_size):
+        end = min(start + chunk_size, n)
+        sources = range(start, end)
+        targets = range(start, n)
+
+        sub = np.asarray(
+            g.distances(source=sources, target=targets, weights=weights),
+            dtype=float,
+        )
+
+        inv = np.zeros_like(sub)
+        np.divide(1.0, sub, out=inv, where=sub > 0)
+        total += np.sum(np.triu(inv, k=1))
+
+        del sub, inv
+
+    return (2.0 * total) / (n * (n - 1))
 
 
 def local_efficiency(g: ig.Graph, v: int) -> float:
@@ -419,7 +435,9 @@ def parse_snapnums(value: str) -> list[str]:
         return []
 
     selected_snapnums = [s.strip() for s in value.split(",") if s.strip()]
-    invalid_snapnums = [s for s in selected_snapnums if s not in {"000", "001", "002", "003", "004"}]
+    invalid_snapnums = [
+        s for s in selected_snapnums if s not in {"000", "001", "002", "003", "004"}
+    ]
     if invalid_snapnums:
         raise argparse.ArgumentTypeError(
             f"Invalid snapnum(s): {', '.join(invalid_snapnums)}. "
