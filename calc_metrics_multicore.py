@@ -11,6 +11,7 @@ import igraph as ig
 import networkx as nx
 import nolds
 import numpy as np
+import psutil
 import scipy.sparse as sp
 from scipy.stats import entropy
 
@@ -113,15 +114,38 @@ def n_nodes(g: ig.Graph) -> int:
     return len(g.vs)
 
 
+def estimate_chunk_size(
+    n: int,
+    min_chunk: int = 50,
+    max_chunk: int = 2000,
+    safety_factor: float = 0.15,
+) -> int:
+    """
+    Calculate chunk_size based on the currently available RAM.
+    safety_factor should be conservative because up to `workers_to_use`
+    processes may be running global_efficiency simultaneously
+    on graphs of the same size.
+    """
+    available_bytes = psutil.virtual_memory().available
+    # sub and inv are both float64; add margin for igraph's internal
+    # computation (BFS/Dijkstra) per row.
+    bytes_per_cell = 8 * 3.0
+    budget = available_bytes * safety_factor
+    chunk = int(budget / (n * bytes_per_cell))
+    return max(min_chunk, min(chunk, max_chunk, n))
+
+
 def global_efficiency(
-    g: ig.Graph, weights: Optional[str] = "distance", chunk_size: int = 1000
+    g: ig.Graph, weights: Optional[str] = "distance", chunk_size: Optional[int] = None
 ) -> float:
     n = g.vcount()
     if n <= 1:
         return 0.0
 
-    total = 0.0
+    if chunk_size is None:
+        chunk_size = estimate_chunk_size(n)
 
+    total = 0.0
     for start in range(0, n, chunk_size):
         end = min(start + chunk_size, n)
         sources = range(start, end)
